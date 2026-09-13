@@ -6,15 +6,15 @@ services:
     container_name: video_studio_backend
     restart: always
     ports:
-      - "${PORT:-3000}:3000"
+      - "3002:3000"
     environment:
       - PORT=3000
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - BACKEND_URL=${BACKEND_URL}
-      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://video_database_6e1r_user:180siNuvN0DKB91hTtif7RRv62VvSHpT@dpg-daigog95efls73df5d40-a.ohio-postgres.render.com/video_database_6e1r}
+      - BACKEND_URL=${BACKEND_URL:-http://72.60.96.242:3002}
+      - JWT_SECRET=${JWT_SECRET:-super_secret_vps_jwt_key_change_me}
       - JWT_EXPIRES_IN=7d
-      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-admin@videostudio.com}
     volumes:
       - backend_uploads_data:/app/uploads
 
