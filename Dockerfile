@@ -4,7 +4,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install ffmpeg dependencies & system utilities if needed
-RUN apk add --no-linux-headers --no-cache ffmpeg python3 make g++
+RUN apk add --no-cache ffmpeg python3 make g++ linux-headers
 
 # Copy package dependency manifests
 COPY package*.json ./
