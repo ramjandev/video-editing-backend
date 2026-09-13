@@ -1,0 +1,83 @@
+{
+  "projectId": "b8b35d7f-61da-4ad9-a40f-bce07855f1f2",
+  "duration": 491.35551,
+  "fps": 30,
+  "resolution": {
+    "w": 1920,
+    "h": 1080
+  },
+  "tracks": [
+    {
+      "id": "track_1",
+      "type": "video",
+      "clips": [
+        {
+          "id": "clip_1789286384660_3e9b",
+          "assetId": "6cb19a88-c11c-48e5-8808-1fbfc96753ad",
+          "asset": {
+            "_id": "6cb19a88-c11c-48e5-8808-1fbfc96753ad",
+            "original_url": "http://localhost:3000/uploads/1789269668566-190495378.mp4",
+            "preview_url": "http://localhost:3000/uploads/1789269668566-190495378.mp4",
+            "thumbnail_sprite_url": null,
+            "duration": 2448.312033,
+            "type": "video",
+            "public_id": "videoplayback.mp4",
+            "createdAt": "2026-09-13T03:21:09.407Z",
+            "updatedAt": "2026-09-13T03:21:09.407Z",
+            "userId": "fb058285-0f51-4ef0-a79a-fb26d12af479"
+          },
+          "startTime": 2,
+          "endTime": 490.2,
+          "trimIn": 0,
+          "trimOut": 488.2
+        }
+      ]
+    },
+    {
+      "id": "track_2",
+      "type": "audio",
+      "clips": [
+        {
+          "id": "clip_1789286389108_iwdj",
+          "assetId": "683d65fd-713c-4729-a5ec-5df48aa60782",
+          "asset": {
+            "_id": "683d65fd-713c-4729-a5ec-5df48aa60782",
+            "original_url": "http://localhost:3000/uploads/1789269835117-796006434.mp3",
+            "preview_url": "http://localhost:3000/uploads/1789269835117-796006434.mp3",
+            "thumbnail_sprite_url": null,
+            "duration": 245.65551,
+            "type": "audio",
+            "public_id": "Ichunu.mp3",
+            "createdAt": "2026-09-13T03:23:55.693Z",
+            "updatedAt": "2026-09-13T03:23:55.693Z",
+            "userId": "fb058285-0f51-4ef0-a79a-fb26d12af479"
+          },
+          "startTime": 0,
+          "endTime": 245.65551,
+          "trimIn": 0,
+          "trimOut": 245.65551
+        },
+        {
+          "id": "clip_1789286392860_pl57",
+          "assetId": "683d65fd-713c-4729-a5ec-5df48aa60782",
+          "asset": {
+            "_id": "683d65fd-713c-4729-a5ec-5df48aa60782",
+            "original_url": "http://localhost:3000/uploads/1789269835117-796006434.mp3",
+            "preview_url": "http://localhost:3000/uploads/1789269835117-796006434.mp3",
+            "thumbnail_sprite_url": null,
+            "duration": 245.65551,
+            "type": "audio",
+            "public_id": "Ichunu.mp3",
+            "createdAt": "2026-09-13T03:23:55.693Z",
+            "updatedAt": "2026-09-13T03:23:55.693Z",
+            "userId": "fb058285-0f51-4ef0-a79a-fb26d12af479"
+          },
+          "startTime": 245.70000000000002,
+          "endTime": 491.35551,
+          "trimIn": 0,
+          "trimOut": 245.65551
+        }
+      ]
+    }
+  ]
+}

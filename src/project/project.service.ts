@@ -155,4 +155,23 @@ export class ProjectService {
       version: nextVersionNum,
     };
   }
+  async rename(projectId: string, title: string, userId?: string) {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const updated = await this.prisma.project.update({
+      where: { id: projectId },
+      data: { title },
+    });
+    return this.mapProject(updated);
+  }
+
+  async remove(projectId: string, userId?: string) {
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException('Project not found');
+
+    await this.prisma.projectVersion.deleteMany({ where: { projectId } });
+    await this.prisma.project.delete({ where: { id: projectId } });
+    return { message: 'Project deleted successfully' };
+  }
 }

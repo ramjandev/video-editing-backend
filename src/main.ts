@@ -1,41 +1,77 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
+import * as fs from 'fs';
+import * as ffmpeg from 'fluent-ffmpeg';
+import * as ffmpegStatic from 'ffmpeg-static';
+import * as ffprobeStatic from 'ffprobe-static';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
+
   // Set global API prefix
   app.setGlobalPrefix('api');
 
-  // Enable CORS
-  app.enableCors();
+  // Enable CORS for all origins and network hosts
+  app.enableCors({ origin: '*', credentials: false });
 
-  // Serve static uploads
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  // Global validation pipe — strips unknown fields, transforms types
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }));
+
+  // Auto-create uploads directory if it doesn't exist
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Created uploads directory');
+  }
+
+// Set ffmpeg & ffprobe paths from static binaries
+const resolvedFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
+const resolvedFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
+if (resolvedFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedFfmpegPath === 'string' ? resolvedFfmpegPath : String(resolvedFfmpegPath));
+if (resolvedFfprobePath) ffmpeg.setFfprobePath(typeof resolvedFfprobePath === 'string' ? resolvedFfprobePath : String(resolvedFfprobePath));
+
+  // Serve static uploads with CORS headers enabled for media elements
+  app.useStaticAssets(uploadsDir, {
     prefix: '/uploads',
+    setHeaders: (res) => {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.set('Access-Control-Allow-Headers', '*');
+    },
   });
 
-  // URL-rewriting middleware to handle local/VPS CORS environment mapping
+  // Configure Swagger OpenAPI Documentation
+  const config = new DocumentBuilder()
+    .setTitle('VideoStudio Pro API')
+    .setDescription('Professional Video Editing, Render Time Estimation Engine & Distributed Cluster API')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('docs', app, document);
+
+  // URL-rewriting middleware to handle local/VPS/network CORS environment mapping
   app.use((req: any, res: any, next: any) => {
     const originalJson = res.json;
     res.json = function (data: any) {
       const host = req.get('host');
       const protocol = req.protocol;
       const requestOrigin = `${protocol}://${host}`;
-      
+
       let jsonString = JSON.stringify(data);
       if (jsonString) {
-        // Replace localhost:3000 URLs with the actual request origin
         jsonString = jsonString.replace(/http:\/\/localhost:3000/g, requestOrigin);
-        
-        // Also replace BACKEND_URL from env if it is set to something else
         if (process.env.BACKEND_URL && process.env.BACKEND_URL !== 'http://localhost:3000') {
           jsonString = jsonString.replaceAll(process.env.BACKEND_URL, requestOrigin);
         }
       }
-      
+
       res.setHeader('Content-Type', 'application/json');
       return res.send(jsonString);
     };
@@ -43,7 +79,8 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`Server running on port ${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`✅ Server running on http://0.0.0.0:${port} (Network Access Enabled)`);
+  console.log(`📚 Swagger OpenAPI Documentation available at http://localhost:${port}/api/docs`);
 }
 bootstrap();

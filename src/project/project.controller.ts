@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Patch, Body, Param, Req } from '@nestjs/common';
 import { ProjectService } from './project.service';
 
 @Controller('projects')
@@ -32,4 +32,21 @@ export class ProjectController {
     const userId = req?.user?.id;
     return await this.projectService.autosave(id, sceneGraph, userId);
   }
+
+  @Patch(':id')
+  async renameProject(
+    @Param('id') id: string,
+    @Body('title') title: string,
+    @Req() req?: any,
+  ) {
+    const userId = req?.user?.id;
+    return await this.projectService.rename(id, title, userId);
+  }
+
+  @Delete(':id')
+  async deleteProject(@Param('id') id: string, @Req() req?: any) {
+    const userId = req?.user?.id;
+    return await this.projectService.remove(id, userId);
+  }
 }
+

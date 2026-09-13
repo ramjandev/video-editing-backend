@@ -8,7 +8,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Configure FFMPEG path
-ffmpeg.setFfmpegPath(ffmpegStatic as unknown as string);
+const resolvedRenderingFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
+if (resolvedRenderingFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedRenderingFfmpegPath === 'string' ? resolvedRenderingFfmpegPath : String(resolvedRenderingFfmpegPath));
 
 export interface RenderSegment {
   index: number;

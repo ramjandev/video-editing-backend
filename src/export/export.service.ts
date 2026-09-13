@@ -7,8 +7,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Configure FFMPEG paths
-ffmpeg.setFfmpegPath(ffmpegStatic!);
-ffmpeg.setFfprobePath(ffprobeStatic.path);
+const resolvedExportFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
+const resolvedExportFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
+if (resolvedExportFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedExportFfmpegPath === 'string' ? resolvedExportFfmpegPath : String(resolvedExportFfmpegPath));
+if (resolvedExportFfprobePath) ffmpeg.setFfprobePath(typeof resolvedExportFfprobePath === 'string' ? resolvedExportFfprobePath : String(resolvedExportFfprobePath));
 
 const WEIGHTS: Record<string, number> = {
   image: 1.0,
@@ -164,8 +166,9 @@ export class ExportService {
     // 1. Process Main Video Track
     if (mainClips.length === 1) {
       const clip = mainClips[0];
+      const isClipMuted = clip.muted || clip.volume === 0;
       filter += `[0:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
-      if (hasAudioFlags[0]) {
+      if (hasAudioFlags[0] && !isClipMuted) {
         filter += `[0:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS[main_a]; `;
       } else {
         const duration = Math.max(0.1, clip.trimOut - clip.trimIn);
@@ -173,8 +176,9 @@ export class ExportService {
       }
     } else {
       mainClips.forEach((clip, index) => {
+        const isClipMuted = clip.muted || clip.volume === 0;
         filter += `[${index}:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
-        if (hasAudioFlags[index]) {
+        if (hasAudioFlags[index] && !isClipMuted) {
           filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS[a${index}]; `;
         } else {
           const duration = Math.max(0.1, clip.trimOut - clip.trimIn);

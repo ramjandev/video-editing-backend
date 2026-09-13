@@ -8,6 +8,7 @@ import { AssetModule } from './asset/asset.module';
 import { ProjectModule } from './project/project.module';
 import { ExportModule } from './export/export.module';
 import { RenderingModule } from './rendering/rendering.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RenderingModule } from './rendering/rendering.module';
     ProjectModule,
     ExportModule,
     RenderingModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

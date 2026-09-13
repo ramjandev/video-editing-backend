@@ -1,0 +1,30 @@
+name: Deploy Backend to VPS
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    name: Auto Deploy Backend to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH into VPS and deploy Backend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "🚀 Auto-deploying Backend..."
+            TARGET_DIR="$HOME/video-editing-backend"
+            if [ ! -d "$TARGET_DIR" ]; then
+              echo "📁 Directory $TARGET_DIR does not exist. Cloning repository..."
+              git clone https://github.com/${{ github.repository }}.git "$TARGET_DIR" || mkdir -p "$TARGET_DIR"
+            fi
+            cd "$TARGET_DIR"
+            if [ -d ".git" ]; then
+              git pull
+            fi
+            docker compose up --build -d

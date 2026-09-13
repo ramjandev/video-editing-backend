@@ -21,8 +21,10 @@ import * as ffprobeStatic from 'ffprobe-static';
 import { AssetService } from './asset.service';
 
 // Configure FFMPEG paths
-ffmpeg.setFfmpegPath(ffmpegStatic as unknown as string);
-ffmpeg.setFfprobePath(ffprobeStatic.path);
+const resolvedAssetFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
+const resolvedAssetFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
+if (resolvedAssetFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedAssetFfmpegPath === 'string' ? resolvedAssetFfmpegPath : String(resolvedAssetFfmpegPath));
+if (resolvedAssetFfprobePath) ffmpeg.setFfprobePath(typeof resolvedAssetFfprobePath === 'string' ? resolvedAssetFfprobePath : String(resolvedAssetFfprobePath));
 
 const probeDuration = (filePath: string): Promise<number> => {
   return new Promise((resolve, reject) => {

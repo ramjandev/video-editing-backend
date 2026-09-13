@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video_studio_backend
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - BACKEND_URL=${BACKEND_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL}
+    volumes:
+      - backend_uploads_data:/app/uploads
+
+volumes:
+  backend_uploads_data:
+    driver: local
