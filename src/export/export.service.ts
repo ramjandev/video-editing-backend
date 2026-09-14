@@ -130,6 +130,17 @@ export class ExportService {
     return processed;
   }
 
+  private getClipTrim(clip: any): { trimIn: number; trimOut: number; duration: number } {
+    const trimIn = Math.max(0, clip.trimIn || 0);
+    let duration = (clip.trimOut && clip.trimOut > trimIn)
+      ? (clip.trimOut - trimIn)
+      : ((clip.endTime - clip.startTime) || clip.asset?.duration || 5);
+    
+    if (duration <= 0) duration = 5;
+    const trimOut = trimIn + duration;
+    return { trimIn, trimOut, duration };
+  }
+
   async export(sceneGraph: any, res: express.Response, requestOrigin: string) {
     // Dump to file for debug
     fs.writeFileSync(
@@ -176,7 +187,7 @@ export class ExportService {
       const targetUrl = this.resolveLocalFilePath(clip.asset.preview_url || clip.asset.original_url);
       const isImage = clip.asset?.type === 'image' || (targetUrl && (targetUrl.endsWith('.png') || targetUrl.endsWith('.jpg') || targetUrl.endsWith('.jpeg')));
       if (isImage) {
-        const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
+        const { duration } = this.getClipTrim(clip);
         command.input(targetUrl).inputOptions(['-loop 1', `-t ${duration}`]);
       } else {
         command.input(targetUrl);
@@ -188,40 +199,38 @@ export class ExportService {
     // 1. Process Main Video Track
     if (mainClips.length === 1) {
       const clip = mainClips[0];
+      const { trimIn, trimOut, duration } = this.getClipTrim(clip);
       const isClipMuted = clip.muted || clip.volume === 0;
       const vol = (clip.volume ?? 100) / 100;
       const isImage = clip.asset?.type === 'image';
       
       if (isImage) {
-        const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
         filter += `[0:v]loop=loop=-1:size=1:start=0,trim=start=0:end=${duration},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
       } else {
-        filter += `[0:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
+        filter += `[0:v]trim=start=${trimIn}:end=${trimOut},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
       }
 
       if (hasAudioFlags[0] && !isClipMuted) {
-        filter += `[0:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,volume=${vol}[main_a]; `;
+        filter += `[0:a]atrim=start=${trimIn}:end=${trimOut},asetpts=PTS-STARTPTS,volume=${vol}[main_a]; `;
       } else {
-        const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
         filter += `anullsrc=r=44100:cl=stereo:d=${duration}[main_a]; `;
       }
     } else {
       mainClips.forEach((clip, index) => {
+        const { trimIn, trimOut, duration } = this.getClipTrim(clip);
         const isClipMuted = clip.muted || clip.volume === 0;
         const vol = (clip.volume ?? 100) / 100;
         const isImage = clip.asset?.type === 'image';
 
         if (isImage) {
-          const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
           filter += `[${index}:v]loop=loop=-1:size=1:start=0,trim=start=0:end=${duration},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
         } else {
-          filter += `[${index}:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
+          filter += `[${index}:v]trim=start=${trimIn}:end=${trimOut},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
         }
 
         if (hasAudioFlags[index] && !isClipMuted) {
-          filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,volume=${vol}[a${index}]; `;
+          filter += `[${index}:a]atrim=start=${trimIn}:end=${trimOut},asetpts=PTS-STARTPTS,volume=${vol}[a${index}]; `;
         } else {
-          const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
           filter += `anullsrc=r=44100:cl=stereo:d=${duration}[a${index}]; `;
         }
       });
@@ -236,9 +245,10 @@ export class ExportService {
     audioClips.forEach((clip, i) => {
       const index = mainClips.length + i;
       if (!hasAudioFlags[index]) return;
-      const delayMs = Math.floor((clip.startTime || 0) * 1000);
+      const { trimIn, trimOut } = this.getClipTrim(clip);
+      const delayMs = Math.max(0, Math.floor((clip.startTime || 0) * 1000));
       const vol = (clip.volume ?? 100) / 100;
-      filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,adelay=delays=${delayMs}:all=1,volume=${vol}[aud${i}]; `;
+      filter += `[${index}:a]atrim=start=${trimIn}:end=${trimOut},asetpts=PTS-STARTPTS,adelay=delays=${delayMs}:all=1,volume=${vol}[aud${i}]; `;
       mixAudioInputs += `[aud${i}]`;
       numAudioInputs++;
     });
