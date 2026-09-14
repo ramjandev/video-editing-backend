@@ -5,12 +5,20 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import * as fs from 'fs';
+import * as express from 'express';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegStatic from 'ffmpeg-static';
 import * as ffprobeStatic from 'ffprobe-static';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Trust proxy for Nginx / reverse proxy setup
+  app.set('trust proxy', 1);
+
+  // Increase payload limits for large video metadata and uploads
+  app.use(express.json({ limit: '500mb' }));
+  app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
   // Set global API prefix
   app.setGlobalPrefix('api');
@@ -28,11 +36,11 @@ async function bootstrap() {
     console.log('Created uploads directory');
   }
 
-// Set ffmpeg & ffprobe paths from static binaries
-const resolvedFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
-const resolvedFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
-if (resolvedFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedFfmpegPath === 'string' ? resolvedFfmpegPath : String(resolvedFfmpegPath));
-if (resolvedFfprobePath) ffmpeg.setFfprobePath(typeof resolvedFfprobePath === 'string' ? resolvedFfprobePath : String(resolvedFfprobePath));
+  // Set ffmpeg & ffprobe paths from static binaries
+  const resolvedFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
+  const resolvedFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
+  if (resolvedFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedFfmpegPath === 'string' ? resolvedFfmpegPath : String(resolvedFfmpegPath));
+  if (resolvedFfprobePath) ffmpeg.setFfprobePath(typeof resolvedFfprobePath === 'string' ? resolvedFfprobePath : String(resolvedFfprobePath));
 
   // Serve static uploads with CORS headers enabled for media elements
   app.useStaticAssets(uploadsDir, {
@@ -60,8 +68,8 @@ if (resolvedFfprobePath) ffmpeg.setFfprobePath(typeof resolvedFfprobePath === 's
   app.use((req: any, res: any, next: any) => {
     const originalJson = res.json;
     res.json = function (data: any) {
-      const host = req.get('host');
-      const protocol = req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const requestOrigin = `${protocol}://${host}`;
 
       let jsonString = JSON.stringify(data);
