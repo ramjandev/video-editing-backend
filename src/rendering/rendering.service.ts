@@ -60,76 +60,31 @@ export class RenderingService {
     requestOrigin: string,
   ): Promise<void> {
     const totalDuration = sceneGraph.duration || 10;
-    const idleWorkers = this.workerRegistry.getIdleWorkers();
 
-    this.logger.log(`Render requested. Total duration: ${totalDuration}s. Idle workers available: ${idleWorkers.length}`);
-
-    // If no workers connected, fallback gracefully to server-side export
-    if (idleWorkers.length === 0) {
-      this.logger.log('No distributed workers available. Utilizing server FFmpeg export engine...');
-      onEvent({
-        type: 'progress',
-        percent: 5,
-        etaSeconds: null,
-        status: 'Rendering on Server FFmpeg Engine...',
-      });
-      return this.exportService.export(sceneGraph, {
-        write: (str: string) => {
-          const lines = str.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                onEvent(data);
-              } catch {}
-            }
-          }
-        },
-        setHeader: () => {},
-        end: () => {},
-      } as any, requestOrigin);
-    }
-
-    // Distributed Rendering Mode!
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const segmentDuration = totalDuration > 30 ? 10 : Math.max(4, Math.ceil(totalDuration / Math.max(2, idleWorkers.length)));
-    const numSegments = Math.ceil(totalDuration / segmentDuration);
-
-    const segments: RenderSegment[] = [];
-    for (let i = 0; i < numSegments; i++) {
-      const startSec = i * segmentDuration;
-      const endSec = Math.min(totalDuration, (i + 1) * segmentDuration);
-      segments.push({
-        index: i,
-        startSec,
-        endSec,
-        duration: endSec - startSec,
-        status: 'PENDING',
-        progress: 0,
-      });
-    }
-
-    const job: DistributedJob = {
-      id: jobId,
-      sceneGraph,
-      requestOrigin,
-      totalDuration,
-      segments,
-      onEvent,
-      createdAt: Date.now(),
-      status: 'RUNNING',
-    };
-
-    this.jobs.set(jobId, job);
+    this.logger.log(`Render requested. Total duration: ${totalDuration}s. Utilizing server FFmpeg export engine...`);
 
     onEvent({
       type: 'progress',
-      percent: 0,
+      percent: 5,
       etaSeconds: null,
-      status: `Distributed rendering started across ${Math.min(idleWorkers.length, numSegments)} nodes (${numSegments} segments)...`,
+      status: 'Rendering on Server FFmpeg Engine...',
     });
 
-    this.dispatchPendingSegments(job);
+    return this.exportService.export(sceneGraph, {
+      write: (str: string) => {
+        const lines = str.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              onEvent(data);
+            } catch {}
+          }
+        }
+      },
+      setHeader: () => {},
+      end: () => {},
+    } as any, requestOrigin);
   }
 
   private createSegmentSceneGraph(fullSceneGraph: any, startSec: number, endSec: number) {
