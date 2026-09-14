@@ -30,7 +30,20 @@ export class AssetController {
         destination: join(process.cwd(), 'uploads'),
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, uniqueSuffix + extname(file.originalname));
+          let ext = extname(file.originalname || '').toLowerCase();
+          if (!ext) {
+            if (file.mimetype?.includes('png')) ext = '.png';
+            else if (file.mimetype?.includes('jpeg') || file.mimetype?.includes('jpg')) ext = '.jpg';
+            else if (file.mimetype?.includes('gif')) ext = '.gif';
+            else if (file.mimetype?.includes('webp')) ext = '.webp';
+            else if (file.mimetype?.includes('mp4')) ext = '.mp4';
+            else if (file.mimetype?.includes('webm')) ext = '.webm';
+            else if (file.mimetype?.includes('ogg')) ext = '.ogg';
+            else if (file.mimetype?.includes('mp3') || file.mimetype?.includes('mpeg')) ext = '.mp3';
+            else if (file.mimetype?.includes('wav')) ext = '.wav';
+            else ext = '.mp4';
+          }
+          cb(null, uniqueSuffix + ext);
         },
       }),
     }),
