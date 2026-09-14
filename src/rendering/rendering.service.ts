@@ -2,14 +2,13 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { WorkerRegistryService, WorkerNode } from './worker-registry.service';
 import { RenderingGateway } from './rendering.gateway';
 import { ExportService } from '../export/export.service';
-import ffmpeg from 'fluent-ffmpeg';
-import ffmpegStatic from 'ffmpeg-static';
 import * as fs from 'fs';
 import * as path from 'path';
+import ffmpeg from 'fluent-ffmpeg';
+import { configureFfmpeg } from '../common/ffmpeg.util';
 
 // Configure FFMPEG path
-const resolvedRenderingFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
-if (resolvedRenderingFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedRenderingFfmpegPath === 'string' ? resolvedRenderingFfmpegPath : String(resolvedRenderingFfmpegPath));
+configureFfmpeg();
 
 export interface RenderSegment {
   index: number;

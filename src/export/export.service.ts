@@ -1,16 +1,12 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as express from 'express';
-import ffmpeg from 'fluent-ffmpeg';
-import ffmpegStatic from 'ffmpeg-static';
-import ffprobeStatic from 'ffprobe-static';
 import * as fs from 'fs';
 import * as path from 'path';
+import ffmpeg from 'fluent-ffmpeg';
+import { configureFfmpeg } from '../common/ffmpeg.util';
 
 // Configure FFMPEG paths
-const resolvedExportFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
-const resolvedExportFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
-if (resolvedExportFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedExportFfmpegPath === 'string' ? resolvedExportFfmpegPath : String(resolvedExportFfmpegPath));
-if (resolvedExportFfprobePath) ffmpeg.setFfprobePath(typeof resolvedExportFfprobePath === 'string' ? resolvedExportFfprobePath : String(resolvedExportFfprobePath));
+configureFfmpeg();
 
 const WEIGHTS: Record<string, number> = {
   image: 1.0,

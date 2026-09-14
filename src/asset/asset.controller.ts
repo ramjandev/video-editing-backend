@@ -15,26 +15,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import * as express from 'express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import * as ffmpeg from 'fluent-ffmpeg';
-import * as ffmpegStatic from 'ffmpeg-static';
-import * as ffprobeStatic from 'ffprobe-static';
 import { AssetService } from './asset.service';
-
-// Configure FFMPEG paths
-const resolvedAssetFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
-const resolvedAssetFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
-if (resolvedAssetFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedAssetFfmpegPath === 'string' ? resolvedAssetFfmpegPath : String(resolvedAssetFfmpegPath));
-if (resolvedAssetFfprobePath) ffmpeg.setFfprobePath(typeof resolvedAssetFfprobePath === 'string' ? resolvedAssetFfprobePath : String(resolvedAssetFfprobePath));
-
-const probeDuration = (filePath: string): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, metadata) => {
-      if (err) return reject(err);
-      const duration = metadata.format.duration;
-      resolve(duration || 0);
-    });
-  });
-};
+import { probeDuration } from '../common/ffmpeg.util';
 
 @Controller('assets')
 export class AssetController {

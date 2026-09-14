@@ -6,9 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import * as fs from 'fs';
 import * as express from 'express';
-import * as ffmpeg from 'fluent-ffmpeg';
-import * as ffmpegStatic from 'ffmpeg-static';
-import * as ffprobeStatic from 'ffprobe-static';
+import { configureFfmpeg } from './common/ffmpeg.util';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -36,11 +34,8 @@ async function bootstrap() {
     console.log('Created uploads directory');
   }
 
-  // Set ffmpeg & ffprobe paths from static binaries
-  const resolvedFfmpegPath = typeof ffmpegStatic === 'string' ? ffmpegStatic : (ffmpegStatic as any)?.default || ffmpegStatic;
-  const resolvedFfprobePath = typeof ffprobeStatic === 'string' ? ffprobeStatic : (ffprobeStatic as any)?.path || (ffprobeStatic as any)?.default?.path || ffprobeStatic;
-  if (resolvedFfmpegPath) ffmpeg.setFfmpegPath(typeof resolvedFfmpegPath === 'string' ? resolvedFfmpegPath : String(resolvedFfmpegPath));
-  if (resolvedFfprobePath) ffmpeg.setFfprobePath(typeof resolvedFfprobePath === 'string' ? resolvedFfprobePath : String(resolvedFfprobePath));
+  // Configure FFMPEG / FFPROBE binary paths with system fallback priority
+  configureFfmpeg();
 
   // Serve static uploads with CORS headers enabled for media elements
   app.useStaticAssets(uploadsDir, {
