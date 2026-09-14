@@ -63,14 +63,20 @@ async function bootstrap() {
   app.use((req: any, res: any, next: any) => {
     const originalJson = res.json;
     res.json = function (data: any) {
-      const host = req.headers['x-forwarded-host'] || req.get('host');
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const rawHost = req.headers['x-forwarded-host'] || req.get('host') || 'localhost:3000';
+      const host = Array.isArray(rawHost) ? rawHost[0] : rawHost.split(',')[0].trim();
+      const rawProto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+      const protocol = Array.isArray(rawProto) ? rawProto[0] : rawProto.split(',')[0].trim();
       const requestOrigin = `${protocol}://${host}`;
 
       let jsonString = JSON.stringify(data);
       if (jsonString) {
-        jsonString = jsonString.replace(/http:\/\/localhost:3000/g, requestOrigin);
-        if (process.env.BACKEND_URL && process.env.BACKEND_URL !== 'http://localhost:3000') {
+        jsonString = jsonString
+          .replace(/http:\/\/localhost:3000/g, requestOrigin)
+          .replace(/http:\/\/72\.60\.96\.242:3011/g, requestOrigin)
+          .replace(/http:\/\/backend:3000/g, requestOrigin);
+
+        if (process.env.BACKEND_URL && !process.env.BACKEND_URL.includes('localhost')) {
           jsonString = jsonString.replaceAll(process.env.BACKEND_URL, requestOrigin);
         }
       }
