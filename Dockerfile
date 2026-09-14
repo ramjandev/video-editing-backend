@@ -41,8 +41,8 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 
-# Create persistent uploads directory
-RUN mkdir -p uploads && chown -R node:node /app
+# Create persistent uploads directory with node user ownership
+RUN mkdir -p uploads && chown -R node:node /app/uploads
 
 USER node
 
