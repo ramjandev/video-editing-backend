@@ -30,7 +30,22 @@ const RESOLUTION_MULTIPLIERS: Record<string, number> = {
 
 @Injectable()
 export class ExportService {
-  private probeHasAudio(url: string): Promise<boolean> {
+  private resolveLocalFilePath(rawUrl: string): string {
+    if (!rawUrl) return rawUrl;
+    if (rawUrl.includes('/uploads/')) {
+      const filename = rawUrl.split('/uploads/').pop()?.split('?')[0];
+      if (filename) {
+        const localPath = path.join(process.cwd(), 'uploads', filename);
+        if (fs.existsSync(localPath)) {
+          return localPath;
+        }
+      }
+    }
+    return rawUrl;
+  }
+
+  private probeHasAudio(rawUrl: string): Promise<boolean> {
+    const url = this.resolveLocalFilePath(rawUrl);
     return new Promise((resolve) => {
       ffmpeg.ffprobe(url, (err, metadata) => {
         if (err) {
@@ -158,7 +173,14 @@ export class ExportService {
 
     const command = ffmpeg();
     allClips.forEach((clip) => {
-      command.input(clip.asset.preview_url || clip.asset.original_url);
+      const targetUrl = this.resolveLocalFilePath(clip.asset.preview_url || clip.asset.original_url);
+      const isImage = clip.asset?.type === 'image' || (targetUrl && (targetUrl.endsWith('.png') || targetUrl.endsWith('.jpg') || targetUrl.endsWith('.jpeg')));
+      if (isImage) {
+        const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
+        command.input(targetUrl).inputOptions(['-loop 1', `-t ${duration}`]);
+      } else {
+        command.input(targetUrl);
+      }
     });
 
     let filter = '';
@@ -167,21 +189,39 @@ export class ExportService {
     if (mainClips.length === 1) {
       const clip = mainClips[0];
       const isClipMuted = clip.muted || clip.volume === 0;
-      filter += `[0:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
-      if (hasAudioFlags[0] && !isClipMuted) {
-        filter += `[0:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS[main_a]; `;
+      const vol = (clip.volume ?? 100) / 100;
+      const isImage = clip.asset?.type === 'image';
+      
+      if (isImage) {
+        const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
+        filter += `[0:v]loop=loop=-1:size=1:start=0,trim=start=0:end=${duration},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
       } else {
-        const duration = Math.max(0.1, clip.trimOut - clip.trimIn);
+        filter += `[0:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[outv]; `;
+      }
+
+      if (hasAudioFlags[0] && !isClipMuted) {
+        filter += `[0:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,volume=${vol}[main_a]; `;
+      } else {
+        const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
         filter += `anullsrc=r=44100:cl=stereo:d=${duration}[main_a]; `;
       }
     } else {
       mainClips.forEach((clip, index) => {
         const isClipMuted = clip.muted || clip.volume === 0;
-        filter += `[${index}:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
-        if (hasAudioFlags[index] && !isClipMuted) {
-          filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS[a${index}]; `;
+        const vol = (clip.volume ?? 100) / 100;
+        const isImage = clip.asset?.type === 'image';
+
+        if (isImage) {
+          const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
+          filter += `[${index}:v]loop=loop=-1:size=1:start=0,trim=start=0:end=${duration},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
         } else {
-          const duration = Math.max(0.1, clip.trimOut - clip.trimIn);
+          filter += `[${index}:v]trim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},setpts=PTS-STARTPTS,scale=1280:720,setsar=1,fps=30,format=yuv420p[v${index}]; `;
+        }
+
+        if (hasAudioFlags[index] && !isClipMuted) {
+          filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,volume=${vol}[a${index}]; `;
+        } else {
+          const duration = Math.max(0.1, (clip.trimOut - clip.trimIn) || (clip.endTime - clip.startTime) || 5);
           filter += `anullsrc=r=44100:cl=stereo:d=${duration}[a${index}]; `;
         }
       });
@@ -196,8 +236,9 @@ export class ExportService {
     audioClips.forEach((clip, i) => {
       const index = mainClips.length + i;
       if (!hasAudioFlags[index]) return;
-      const delayMs = Math.floor(clip.startTime * 1000);
-      filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,adelay=delays=${delayMs}:all=1[aud${i}]; `;
+      const delayMs = Math.floor((clip.startTime || 0) * 1000);
+      const vol = (clip.volume ?? 100) / 100;
+      filter += `[${index}:a]atrim=start=${Math.max(0, clip.trimIn)}:end=${Math.max(0, clip.trimOut)},asetpts=PTS-STARTPTS,adelay=delays=${delayMs}:all=1,volume=${vol}[aud${i}]; `;
       mixAudioInputs += `[aud${i}]`;
       numAudioInputs++;
     });
