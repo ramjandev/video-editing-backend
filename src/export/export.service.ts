@@ -139,7 +139,20 @@ export class ExportService {
     return { trimIn, trimOut, duration };
   }
 
-  async export(sceneGraph: any, res: express.Response, requestOrigin: string) {
+  async findUserExports(userId?: string) {
+    const whereClause: any = { type: 'export' };
+    if (userId) whereClause.userId = userId;
+    const assets = await this.prisma.asset.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+    });
+    return assets.map((a) => ({
+      _id: a.id,
+      ...a,
+    }));
+  }
+
+  async export(sceneGraph: any, res: express.Response, requestOrigin: string, userId?: string) {
     // Dump to file for debug inside uploads folder safely
     try {
       const debugFile = path.join(process.cwd(), 'uploads', 'last_export.json');
@@ -330,8 +343,25 @@ export class ExportService {
       res.write(`data: ${JSON.stringify({ type: 'progress', percent, etaSeconds, status: 'rendering' })}\n\n`);
     });
 
-    command.on('end', () => {
+    command.on('end', async () => {
       const filename = path.basename(outputPath);
+      const fileUrl = `/uploads/${filename}`;
+      if (userId) {
+        try {
+          await this.prisma.asset.create({
+            data: {
+              original_url: fileUrl,
+              preview_url: fileUrl,
+              type: 'export',
+              duration: sceneGraph.duration || 10,
+              public_id: filename,
+              userId: userId,
+            },
+          });
+        } catch (e) {
+          console.error('Failed to create DB asset record for export:', e);
+        }
+      }
       res.write(`data: ${JSON.stringify({ type: 'complete', url: `${requestOrigin}/uploads/${filename}` })}\n\n`);
       res.end();
     });
