@@ -138,11 +138,13 @@ export class ExportService {
   }
 
   async export(sceneGraph: any, res: express.Response, requestOrigin: string) {
-    // Dump to file for debug
-    fs.writeFileSync(
-      path.join(process.cwd(), 'last_export.json'),
-      JSON.stringify(sceneGraph, null, 2),
-    );
+    // Dump to file for debug inside uploads folder safely
+    try {
+      const debugFile = path.join(process.cwd(), 'uploads', 'last_export.json');
+      fs.writeFileSync(debugFile, JSON.stringify(sceneGraph, null, 2));
+    } catch (e) {
+      console.warn('Could not write last_export.json debug file:', e);
+    }
 
     if (!sceneGraph || !sceneGraph.tracks || sceneGraph.tracks.length === 0) {
       throw new BadRequestException('Empty scene graph');
