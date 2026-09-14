@@ -72,12 +72,15 @@ export class AssetController {
       type = 'video';
     }
 
-    let assetDuration = 0;
-    if (type === 'video' || type === 'audio') {
-      try {
-        assetDuration = await probeDuration(file.path);
-      } catch (err) {
-        console.error('Probe duration error:', err);
+    let assetDuration = req.body?.duration ? parseFloat(req.body.duration) : 0;
+
+    if (!assetDuration || isNaN(assetDuration) || assetDuration <= 0) {
+      if (type === 'video' || type === 'audio') {
+        try {
+          assetDuration = await probeDuration(file.path);
+        } catch (err) {
+          console.error('Probe duration error:', err);
+        }
       }
     }
 

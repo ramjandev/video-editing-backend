@@ -88,7 +88,12 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port, '0.0.0.0');
+  const server = await app.listen(port, '0.0.0.0');
+  if (server && typeof server.setTimeout === 'function') {
+    server.setTimeout(600000); // 10 minutes timeout for video uploads
+    server.keepAliveTimeout = 120000; // 2 minutes keep-alive
+    server.headersTimeout = 120000; // 2 minutes header timeout
+  }
   console.log(`✅ Server running on http://0.0.0.0:${port} (Network Access Enabled)`);
   console.log(`📚 Swagger OpenAPI Documentation available at http://localhost:${port}/api/docs`);
 }
