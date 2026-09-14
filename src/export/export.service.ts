@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { configureFfmpeg } from '../common/ffmpeg.util';
+import { PrismaService } from '../prisma/prisma.service';
 
 // Configure FFMPEG paths
 configureFfmpeg();
@@ -26,6 +27,7 @@ const RESOLUTION_MULTIPLIERS: Record<string, number> = {
 
 @Injectable()
 export class ExportService {
+  constructor(private prisma: PrismaService) {}
   private resolveLocalFilePath(rawUrl: string): string {
     if (!rawUrl) return rawUrl;
     if (rawUrl.includes('/uploads/')) {
@@ -148,6 +150,28 @@ export class ExportService {
 
     if (!sceneGraph || !sceneGraph.tracks || sceneGraph.tracks.length === 0) {
       throw new BadRequestException('Empty scene graph');
+    }
+
+    // Resolve any blob: URLs to actual database server URLs if available, or reject cleanly
+    for (const track of sceneGraph.tracks || []) {
+      for (const clip of track.clips || []) {
+        const url = clip.asset?.original_url || clip.asset?.preview_url || '';
+        if (url.startsWith('blob:')) {
+          const assetId = clip.assetId || clip.asset?._id;
+          if (assetId && !assetId.startsWith('temp_')) {
+            const dbAsset = await this.prisma.asset.findUnique({ where: { id: assetId } });
+            if (dbAsset) {
+              clip.asset.original_url = dbAsset.original_url;
+              clip.asset.preview_url = dbAsset.preview_url;
+            }
+          }
+          if (clip.asset?.original_url?.startsWith('blob:')) {
+            throw new BadRequestException(
+              `Media file "${clip.asset?.public_id || 'clip'}" is still uploading to the server. Please wait a moment for upload to finish before exporting.`
+            );
+          }
+        }
+      }
     }
 
     const allClipsInProject: any[] = [];
