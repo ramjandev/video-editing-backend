@@ -43,9 +43,21 @@ export class AssetController {
       throw new BadRequestException('No file uploaded');
     }
 
+    const ext = extname(file.originalname || file.filename).toLowerCase();
     let type = 'video';
-    if (file.mimetype.startsWith('image/')) type = 'image';
-    if (file.mimetype.startsWith('audio/')) type = 'audio';
+    if (
+      file.mimetype.startsWith('image/') ||
+      ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.ico'].includes(ext)
+    ) {
+      type = 'image';
+    } else if (
+      file.mimetype.startsWith('audio/') ||
+      ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'].includes(ext)
+    ) {
+      type = 'audio';
+    } else {
+      type = 'video';
+    }
 
     let assetDuration = 0;
     if (type === 'video' || type === 'audio') {
@@ -54,8 +66,10 @@ export class AssetController {
       } catch (err) {
         console.error('Probe duration error:', err);
       }
-    } else {
-      assetDuration = 5; // Default image duration
+    }
+
+    if (!assetDuration || isNaN(assetDuration) || assetDuration <= 0) {
+      assetDuration = type === 'image' ? 5 : 10;
     }
 
     const host = req.headers['x-forwarded-host'] || req.get('host');
