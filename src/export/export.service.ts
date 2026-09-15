@@ -295,7 +295,16 @@ export class ExportService {
       command.complexFilter(filter, ['outv', 'main_a']);
     }
 
-    command.videoCodec('libx264').audioCodec('aac').outputOptions(['-shortest']);
+    command
+      .videoCodec('libx264')
+      .audioCodec('aac')
+      .outputOptions([
+        '-crf 26',
+        '-preset fast',
+        '-b:a 128k',
+        '-movflags +faststart',
+        '-shortest',
+      ]);
 
     const totalTCU = this.calculateTotalProjectWorkload(sceneGraph);
     const session = this.createRenderSession(totalTCU);
