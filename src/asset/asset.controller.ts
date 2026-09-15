@@ -25,7 +25,7 @@ export class AssetController {
   @Post()
   @UseInterceptors(
     FileInterceptor('video', {
-      limits: { fileSize: 500 * 1024 * 1024 },
+      limits: { fileSize: 5000 * 1024 * 1024 },
       storage: diskStorage({
         destination: join(process.cwd(), 'uploads'),
         filename: (req, file, cb) => {

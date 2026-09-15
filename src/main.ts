@@ -15,8 +15,8 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   // Increase payload limits for large video metadata and uploads
-  app.use(express.json({ limit: '500mb' }));
-  app.use(express.urlencoded({ limit: '500mb', extended: true }));
+  app.use(express.json({ limit: '5000mb' }));
+  app.use(express.urlencoded({ limit: '5000mb', extended: true }));
 
   // Set global API prefix
   app.setGlobalPrefix('api');
@@ -90,9 +90,9 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   const server = await app.listen(port, '0.0.0.0');
   if (server && typeof server.setTimeout === 'function') {
-    server.setTimeout(600000); // 10 minutes timeout for video uploads
-    server.keepAliveTimeout = 120000; // 2 minutes keep-alive
-    server.headersTimeout = 120000; // 2 minutes header timeout
+    server.setTimeout(3600000); // 1 hour timeout for large video uploads
+    server.keepAliveTimeout = 600000; // 10 minutes keep-alive
+    server.headersTimeout = 600000; // 10 minutes header timeout
   }
   console.log(`✅ Server running on http://0.0.0.0:${port} (Network Access Enabled)`);
   console.log(`📚 Swagger OpenAPI Documentation available at http://localhost:${port}/api/docs`);
