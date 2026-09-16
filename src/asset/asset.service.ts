@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface CreateAssetInput {
   original_url: string;
@@ -8,7 +10,7 @@ export interface CreateAssetInput {
   duration?: number;
   type?: string;
   public_id?: string;
-  userId?: string;
+  userId: string;
 }
 
 @Injectable()
@@ -21,30 +23,9 @@ export class AssetService {
     return { _id: id, ...rest };
   }
 
-  private async getOrCreateDefaultUser(): Promise<string> {
-    const existing = await this.prisma.user.findFirst();
-    if (existing) return existing.id;
-
-    const defaultUser = await this.prisma.user.create({
-      data: {
-        firstName: 'Video',
-        lastName: 'Creator',
-        email: 'creator@editor.local',
-        password: '$2b$10$hasheddefaultpasswordforapp123456789',
-      },
-    });
-    return defaultUser.id;
-  }
-
   async create(data: CreateAssetInput) {
-    let resolvedUserId = data.userId;
-    if (!resolvedUserId) {
-      resolvedUserId = await this.getOrCreateDefaultUser();
-    } else {
-      const userExists = await this.prisma.user.findUnique({ where: { id: resolvedUserId } });
-      if (!userExists) {
-        resolvedUserId = await this.getOrCreateDefaultUser();
-      }
+    if (!data.userId) {
+      throw new UnauthorizedException('User authentication is required to create an asset');
     }
 
     const asset = await this.prisma.asset.create({
@@ -55,16 +36,18 @@ export class AssetService {
         duration: data.duration,
         type: data.type || 'video',
         public_id: data.public_id,
-        userId: resolvedUserId,
+        userId: data.userId,
       },
     });
     return this.mapAsset(asset);
   }
 
   async findAll(userId?: string) {
-    const whereClause = userId ? { userId } : {};
+    if (!userId) {
+      return [];
+    }
     const assets = await this.prisma.asset.findMany({
-      where: whereClause,
+      where: { userId },
       orderBy: {
         createdAt: 'desc',
       },
@@ -73,12 +56,36 @@ export class AssetService {
   }
 
   async delete(id: string, userId?: string) {
-    const whereClause: any = { id };
-    if (userId) {
-      whereClause.userId = userId;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
     }
+
+    const existing = await this.prisma.asset.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Asset not found or you do not have permission to delete it');
+    }
+
+    // Attempt to delete physical file from disk
+    try {
+      if (existing.original_url && existing.original_url.includes('/uploads/')) {
+        const rel = existing.original_url.split('/uploads/').pop()?.split('?')[0];
+        if (rel) {
+          const parts = rel.split('/').filter(Boolean);
+          const filePath = path.join(process.cwd(), 'uploads', ...parts);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Could not delete physical asset file:', err);
+    }
+
     const asset = await this.prisma.asset.delete({
-      where: whereClause,
+      where: { id },
     });
     return this.mapAsset(asset);
   }

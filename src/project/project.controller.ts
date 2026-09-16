@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Patch, Body, Param, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Patch, Body, Param, Req, UseGuards } from '@nestjs/common';
 import { ProjectService } from './project.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('projects')
+@UseGuards(JwtAuthGuard)
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 

@@ -31,9 +31,10 @@ export class ExportService {
   private resolveLocalFilePath(rawUrl: string): string {
     if (!rawUrl) return rawUrl;
     if (rawUrl.includes('/uploads/')) {
-      const filename = rawUrl.split('/uploads/').pop()?.split('?')[0];
-      if (filename) {
-        const localPath = path.join(process.cwd(), 'uploads', filename);
+      const rel = rawUrl.split('/uploads/').pop()?.split('?')[0];
+      if (rel) {
+        const parts = rel.split('/').filter(Boolean);
+        const localPath = path.join(process.cwd(), 'uploads', ...parts);
         if (fs.existsSync(localPath)) {
           return localPath;
         }
@@ -207,10 +208,11 @@ export class ExportService {
       throw new BadRequestException('No video clips to export');
     }
 
-    const outputPath = path.join(process.cwd(), 'uploads', `export_${Date.now()}.mp4`);
-    if (!fs.existsSync(path.join(process.cwd(), 'uploads'))) {
-      fs.mkdirSync(path.join(process.cwd(), 'uploads'), { recursive: true });
+    const exportFolder = userId ? path.join(process.cwd(), 'uploads', userId) : path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(exportFolder)) {
+      fs.mkdirSync(exportFolder, { recursive: true });
     }
+    const outputPath = path.join(exportFolder, `export_${Date.now()}.mp4`);
 
     const allClips = [...mainClips, ...audioClips];
     const hasAudioFlags = await Promise.all(
@@ -354,7 +356,7 @@ export class ExportService {
 
     command.on('end', async () => {
       const filename = path.basename(outputPath);
-      const fileUrl = `/uploads/${filename}`;
+      const fileUrl = userId ? `/uploads/${userId}/${filename}` : `/uploads/${filename}`;
       if (userId) {
         try {
           await this.prisma.asset.create({
@@ -371,7 +373,7 @@ export class ExportService {
           console.error('Failed to create DB asset record for export:', e);
         }
       }
-      res.write(`data: ${JSON.stringify({ type: 'complete', url: `${requestOrigin}/uploads/${filename}` })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'complete', url: `${requestOrigin}${fileUrl}` })}\n\n`);
       res.end();
     });
 

@@ -1,9 +1,11 @@
-import { Controller, Post, Get, Body, Req, Res, Inject, forwardRef } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, Res, Inject, forwardRef, UseGuards } from '@nestjs/common';
 import * as express from 'express';
 import { ExportService } from './export.service';
 import { RenderingService } from '../rendering/rendering.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('export')
+@UseGuards(JwtAuthGuard)
 export class ExportController {
   constructor(
     private readonly exportService: ExportService,
