@@ -24,7 +24,7 @@ services:
       - PORT=3000
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres_password_123@postgres:5432/video_editing_db?schema=public}
-      - BACKEND_URL=${BACKEND_URL:-http://video-editing.duckdns.org}
+      - BACKEND_URL=${BACKEND_URL:-https://video-editing.duckdns.org}
       - JWT_SECRET=${JWT_SECRET:-super_secret_vps_jwt_key_change_me}
       - JWT_EXPIRES_IN=7d
       - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-admin@videostudio.com}
