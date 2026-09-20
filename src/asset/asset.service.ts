@@ -125,15 +125,18 @@ export class AssetService {
           .outputOptions([
             '-vf', "scale='min(854,iw)':-2",
             '-c:v', 'libx264',
-            '-preset', 'veryfast',
-            '-crf', '28',
+            '-preset', 'ultrafast',
+            '-crf', '26',
+            '-g', '15',
+            '-keyint_min', '15',
+            '-sc_threshold', '0',
             '-c:a', 'aac',
             '-b:a', '96k',
             '-movflags', '+faststart',
           ])
           .output(outputPath)
           .on('end', () => {
-            console.log(`[Proxy] Successfully generated 480p preview: ${outputPath}`);
+            console.log(`[Proxy] Successfully generated 480p preview proxy (GOP=15, faststart): ${outputPath}`);
             resolve(true);
           })
           .on('error', (err: any) => {
