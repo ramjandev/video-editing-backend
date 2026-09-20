@@ -351,7 +351,7 @@ export class ExportService {
         etaSeconds = Math.ceil(remainingTCU / session.smoothedSpeed);
       }
 
-      res.write(`data: ${JSON.stringify({ type: 'progress', percent, etaSeconds, status: 'rendering' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'progress', percent, etaSeconds, status: 'Cloud Server FFmpeg Engine: Processing video...' })}\n\n`);
     });
 
     command.on('end', async () => {
