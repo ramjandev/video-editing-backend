@@ -386,4 +386,22 @@ export class ExportService {
 
     command.save(outputPath);
   }
+
+  /**
+   * Create an export asset record for a browser-rendered video upload.
+   */
+  async createExportAsset(fileUrl: string, userId?: string): Promise<void> {
+    if (!userId) return;
+    const filename = path.basename(fileUrl);
+    await this.prisma.asset.create({
+      data: {
+        original_url: fileUrl,
+        preview_url: fileUrl,
+        type: 'export',
+        duration: 0,
+        public_id: filename,
+        userId: userId,
+      },
+    });
+  }
 }
