@@ -109,14 +109,39 @@ export class AssetController {
     const fileUrl = `${backendUrl}/uploads/${userId}/${file.filename}`;
 
     try {
-      return await this.assetService.create({
+      let previewUrl = fileUrl;
+      const isVideo = type === 'video';
+      const proxyFilename = isVideo ? `proxy_${file.filename.replace(/\.[^.]+$/, '')}.mp4` : null;
+      const proxyPath = isVideo && proxyFilename ? join(file.destination, proxyFilename) : null;
+      const proxyUrl = isVideo && proxyFilename ? `${backendUrl}/uploads/${userId}/${proxyFilename}` : null;
+
+      // For short videos (<= 20s), encode proxy inline so frontend receives proxy_url immediately
+      if (isVideo && proxyPath && assetDuration > 0 && assetDuration <= 20) {
+        const ok = await this.assetService.generateVideoProxy(file.path, proxyPath);
+        if (ok && proxyUrl) {
+          previewUrl = proxyUrl;
+        }
+      }
+
+      const createdAsset = await this.assetService.create({
         original_url: fileUrl,
-        preview_url: fileUrl,
+        preview_url: previewUrl,
         duration: assetDuration,
         type: type,
         public_id: file.originalname || file.filename,
         userId,
       });
+
+      // For longer videos, generate proxy in background without delaying the upload response
+      if (isVideo && proxyPath && proxyUrl && previewUrl === fileUrl && createdAsset?._id) {
+        this.assetService.generateVideoProxy(file.path, proxyPath).then((ok) => {
+          if (ok) {
+            this.assetService.updatePreviewUrl(createdAsset._id, proxyUrl);
+          }
+        });
+      }
+
+      return createdAsset;
     } catch (error) {
       console.error('Upload DB save error:', error);
       throw new InternalServerErrorException('Failed to upload asset');

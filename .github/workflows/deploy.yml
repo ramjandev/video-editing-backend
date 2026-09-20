@@ -27,6 +27,8 @@ jobs:
             fi
             cd "$TARGET_DIR"
             if [ -d ".git" ]; then
-              git pull
+              git fetch origin
+              git reset --hard origin/main || git reset --hard origin/master
+              git clean -fd
             fi
             docker compose up --build -d

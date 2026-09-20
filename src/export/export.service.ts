@@ -196,12 +196,12 @@ export class ExportService {
     const mainClips = allClipsInProject
       .filter((clip) => {
         const type = clip.asset?.type || 'video';
-        return (type === 'video' || type === 'image') && (clip.asset?.preview_url || clip.asset?.original_url);
+        return (type === 'video' || type === 'image') && (clip.asset?.original_url || clip.asset?.preview_url);
       })
       .sort((a, b) => a.startTime - b.startTime);
 
     const audioClips = allClipsInProject
-      .filter((clip) => clip.asset?.type === 'audio' && (clip.asset?.preview_url || clip.asset?.original_url))
+      .filter((clip) => clip.asset?.type === 'audio' && (clip.asset?.original_url || clip.asset?.preview_url))
       .sort((a, b) => a.startTime - b.startTime);
 
     if (mainClips.length === 0) {
@@ -216,12 +216,12 @@ export class ExportService {
 
     const allClips = [...mainClips, ...audioClips];
     const hasAudioFlags = await Promise.all(
-      allClips.map((clip) => this.probeHasAudio(clip.asset.preview_url || clip.asset.original_url)),
+      allClips.map((clip) => this.probeHasAudio(clip.asset.original_url || clip.asset.preview_url)),
     );
 
     const command = ffmpeg();
     allClips.forEach((clip) => {
-      const targetUrl = this.resolveLocalFilePath(clip.asset.preview_url || clip.asset.original_url);
+      const targetUrl = this.resolveLocalFilePath(clip.asset.original_url || clip.asset.preview_url);
       const isImage = clip.asset?.type === 'image' || (targetUrl && (targetUrl.endsWith('.png') || targetUrl.endsWith('.jpg') || targetUrl.endsWith('.jpeg')));
       if (isImage) {
         const { duration } = this.getClipTrim(clip);
