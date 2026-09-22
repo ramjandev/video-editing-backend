@@ -290,12 +290,53 @@ export class ExportService {
       numAudioInputs++;
     });
 
+    const finalAudioLabel = numAudioInputs > 1 ? 'outa' : 'main_a';
     if (numAudioInputs > 1) {
-      filter += `${mixAudioInputs}amix=inputs=${numAudioInputs}:duration=first:dropout_transition=2:normalize=0[outa]`;
-      command.complexFilter(filter, ['outv', 'outa']);
-    } else {
-      command.complexFilter(filter, ['outv', 'main_a']);
+      filter += `${mixAudioInputs}amix=inputs=${numAudioInputs}:duration=first:dropout_transition=2:normalize=0[outa]; `;
     }
+
+    // 3. Process Text & Shape Overlay Annotations onto Video Stream
+    const overlayClips = allClipsInProject.filter(
+      (clip) => clip.asset?.type === 'text' || clip.asset?.type === 'shape'
+    );
+
+    let currentVideoLabel = 'outv';
+    if (overlayClips.length > 0) {
+      filter = filter.trim();
+      if (!filter.endsWith(';')) filter += '; ';
+
+      overlayClips.forEach((clip, i) => {
+        const type = clip.asset?.type;
+        const startTime = clip.startTime || 0;
+        const endTime = clip.endTime || 5;
+        const nextLabel = i === overlayClips.length - 1 ? 'final_v' : `v_over_${i}`;
+        const posX = Math.round(640 + (clip.transform?.x || 0));
+        const posY = Math.round(360 + (clip.transform?.y || 0));
+
+        if (type === 'text') {
+          const styles = clip.textStyles || {};
+          const textStr = (styles.content || clip.asset?.content || 'Text').replace(/:/g, '\\:').replace(/'/g, '');
+          const fontSize = styles.fontSize || 36;
+          const fontColor = (styles.color || 'white').replace('#', '0x');
+          filter += `[${currentVideoLabel}]drawtext=text='${textStr}':fontsize=${fontSize}:fontcolor=${fontColor}:x=${posX}-text_w/2:y=${posY}-text_h/2:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
+        } else if (type === 'shape') {
+          const shapeStyles = clip.shapeStyles || {};
+          const width = clip.transform?.width || 200;
+          const height = clip.transform?.height || 150;
+          const boxX = Math.round(posX - width / 2);
+          const boxY = Math.round(posY - height / 2);
+          const color = (shapeStyles.fillColor || '#38bdf8').replace('#', '0x');
+          filter += `[${currentVideoLabel}]drawbox=x=${boxX}:y=${boxY}:w=${width}:h=${height}:color=${color}@0.8:t=fill:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
+        }
+        currentVideoLabel = nextLabel;
+      });
+    }
+
+    // Strip trailing semicolon
+    filter = filter.trim();
+    if (filter.endsWith(';')) filter = filter.slice(0, -1);
+
+    command.complexFilter(filter, [currentVideoLabel, finalAudioLabel]);
 
     command
       .videoCodec('libx264')
