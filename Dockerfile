@@ -28,8 +28,8 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install system ffmpeg for video rendering stability
-RUN apk add --no-cache ffmpeg
+# Install system ffmpeg & font packages for video rendering stability
+RUN apk add --no-cache ffmpeg font-dejavu ttf-freefont fontconfig
 
 ENV NODE_ENV=production
 ENV PORT=3000

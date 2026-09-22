@@ -21,14 +21,25 @@ jobs:
           script: |
             echo "🚀 Auto-deploying Backend..."
             TARGET_DIR="$HOME/video-editing-backend"
-            if [ ! -d "$TARGET_DIR" ]; then
-              echo "📁 Directory $TARGET_DIR does not exist. Cloning repository..."
-              git clone https://github.com/${{ github.repository }}.git "$TARGET_DIR" || mkdir -p "$TARGET_DIR"
+            if [ ! -d "$TARGET_DIR/.git" ]; then
+              echo "📁 Cloning fresh repository..."
+              rm -rf "$TARGET_DIR"
+              git clone https://github.com/${{ github.repository }}.git "$TARGET_DIR"
             fi
             cd "$TARGET_DIR"
-            if [ -d ".git" ]; then
-              git fetch origin
-              git reset --hard origin/main || git reset --hard origin/master
-              git clean -fd
+            echo "🔄 Fetching latest code..."
+            git fetch origin
+            git reset --hard origin/main || git reset --hard origin/master
+            git clean -fd
+            echo "🐳 Building and launching Docker containers..."
+            if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+              docker compose up --build -d
+            elif command -v docker-compose &> /dev/null; then
+              docker-compose up --build -d
+            else
+              echo "Executing npm build fallback..."
+              npm install
+              npm run build
+              pm2 restart all || node dist/src/main.js &
             fi
-            docker compose up --build -d
+            echo "✅ Backend successfully deployed to VPS!"
