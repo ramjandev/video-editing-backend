@@ -334,18 +334,33 @@ export class ExportService {
           const styles = clip.textStyles || {};
           const textStr = (styles.content || clip.asset?.content || 'Text').replace(/:/g, '\\:').replace(/'/g, '');
           const fontSize = styles.fontSize || 36;
-          const fontColor = (styles.color || 'white').replace('#', '0x');
+          const fontColor = (styles.color || '#ffffff').replace('transparent', '0xffffff').replace('#', '0x');
           const fontFile = this.getSystemFontFile();
           const fontfileOpt = fontFile ? `:fontfile='${fontFile}'` : '';
           filter += `[${currentVideoLabel}]drawtext=text='${textStr}'${fontfileOpt}:fontsize=${fontSize}:fontcolor=${fontColor}:x=${posX}-text_w/2:y=${posY}-text_h/2:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
         } else if (type === 'shape') {
           const shapeStyles = clip.shapeStyles || {};
-          const width = clip.transform?.width || 200;
-          const height = clip.transform?.height || 150;
-          const boxX = Math.round(posX - width / 2);
-          const boxY = Math.round(posY - height / 2);
-          const color = (shapeStyles.fillColor || '#38bdf8').replace('#', '0x');
-          filter += `[${currentVideoLabel}]drawbox=x=${boxX}:y=${boxY}:w=${width}:h=${height}:color=${color}@0.8:t=fill:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
+          const shapeType = shapeStyles.shapeType || clip.asset?.content || 'Rectangle';
+          const isLine = shapeType === 'Line' || shapeType === 'line';
+
+          if (isLine) {
+            const width = clip.transform?.width || 200;
+            const strokeW = shapeStyles.strokeWidth || 4;
+            const strokeColor = (shapeStyles.strokeColor || shapeStyles.fillColor || '#38bdf8')
+              .replace('transparent', '0x38bdf8')
+              .replace('#', '0x');
+            const boxX = Math.round(posX - width / 2);
+            const boxY = Math.round(posY - strokeW / 2);
+            filter += `[${currentVideoLabel}]drawbox=x=${boxX}:y=${boxY}:w=${width}:h=${strokeW}:color=${strokeColor}@1.0:t=fill:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
+          } else {
+            const rawColor = shapeStyles.fillColor || '#38bdf8';
+            const width = clip.transform?.width || 200;
+            const height = clip.transform?.height || 150;
+            const boxX = Math.round(posX - width / 2);
+            const boxY = Math.round(posY - height / 2);
+            const color = rawColor.replace('transparent', '0x38bdf8').replace('#', '0x');
+            filter += `[${currentVideoLabel}]drawbox=x=${boxX}:y=${boxY}:w=${width}:h=${height}:color=${color}@0.8:t=fill:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
+          }
         }
         currentVideoLabel = nextLabel;
       });
