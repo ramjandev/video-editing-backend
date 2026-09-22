@@ -43,6 +43,23 @@ export class ExportService {
     return rawUrl;
   }
 
+  private getSystemFontFile(): string {
+    const candidateFonts = [
+      'C:/Windows/Fonts/arial.ttf',
+      'C:/Windows/Fonts/tahoma.ttf',
+      'C:/Windows/Fonts/calibri.ttf',
+      'C:/Windows/Fonts/seguiemj.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+      '/usr/share/fonts/TTF/DejaVuSans.ttf',
+    ];
+    for (const fontPath of candidateFonts) {
+      if (fs.existsSync(fontPath)) {
+        return fontPath.replace(/:/g, '\\:');
+      }
+    }
+    return '';
+  }
+
   private probeHasAudio(rawUrl: string): Promise<boolean> {
     const url = this.resolveLocalFilePath(rawUrl);
     return new Promise((resolve) => {
@@ -318,7 +335,9 @@ export class ExportService {
           const textStr = (styles.content || clip.asset?.content || 'Text').replace(/:/g, '\\:').replace(/'/g, '');
           const fontSize = styles.fontSize || 36;
           const fontColor = (styles.color || 'white').replace('#', '0x');
-          filter += `[${currentVideoLabel}]drawtext=text='${textStr}':fontsize=${fontSize}:fontcolor=${fontColor}:x=${posX}-text_w/2:y=${posY}-text_h/2:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
+          const fontFile = this.getSystemFontFile();
+          const fontfileOpt = fontFile ? `:fontfile='${fontFile}'` : '';
+          filter += `[${currentVideoLabel}]drawtext=text='${textStr}'${fontfileOpt}:fontsize=${fontSize}:fontcolor=${fontColor}:x=${posX}-text_w/2:y=${posY}-text_h/2:enable='between(t,${startTime},${endTime})'[${nextLabel}]; `;
         } else if (type === 'shape') {
           const shapeStyles = clip.shapeStyles || {};
           const width = clip.transform?.width || 200;
