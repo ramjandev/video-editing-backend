@@ -211,6 +211,28 @@ export class RenderingService {
     }
   }
 
+  onSegmentPreempted(jobId: string, segmentIndex: number, checkpoint?: any) {
+    const job = this.jobs.get(jobId);
+    if (!job) return;
+
+    const segment = job.segments.find((s) => s.index === segmentIndex);
+    if (segment && segment.status !== 'COMPLETED') {
+      this.logger.log(`Job ${jobId}: Segment ${segmentIndex} preempted by user activity. Resetting to PENDING.`);
+      segment.status = 'PENDING';
+      segment.workerSocketId = undefined;
+      // Keep in-memory checkpoint if available
+      if (checkpoint?.percent) {
+        segment.progress = checkpoint.percent;
+      }
+
+      // Check if other idle workers exist, else wait for idle
+      const idle = this.workerRegistry.getIdleWorkers();
+      if (idle.length > 0) {
+        this.dispatchPendingSegments(job);
+      }
+    }
+  }
+
   private async renderSegmentLocally(job: DistributedJob, segment: RenderSegment) {
     segment.status = 'RENDERING';
     const chunkFileName = `chunk_${job.id}_${segment.index}_fallback.mp4`;

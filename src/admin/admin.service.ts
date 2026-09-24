@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
+import { WorkerRegistryService } from '../rendering/worker-registry.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workerRegistry: WorkerRegistryService,
+  ) {}
 
   async getStats() {
     const totalUsers = await this.prisma.user.count();
@@ -114,5 +118,23 @@ export class AdminService {
     return {
       message: `User ${user.email} and all associated data deleted successfully`,
     };
+  }
+
+  // --- Distributed Rendering Cluster & Logs (Admin Only) ---
+
+  async getRenderingNodes() {
+    return this.workerRegistry.getStats();
+  }
+
+  async getRenderingLogs(query?: { eventType?: string; level?: string; workerId?: string; limit?: number }) {
+    return {
+      total: this.workerRegistry.getLogs().length,
+      logs: this.workerRegistry.getLogs(query),
+    };
+  }
+
+  async clearRenderingLogs() {
+    this.workerRegistry.clearLogs();
+    return { message: 'Cluster activity logs cleared successfully' };
   }
 }

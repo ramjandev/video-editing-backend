@@ -1,10 +1,18 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
   private pool: Pool;
 
@@ -13,16 +21,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     const pool = new Pool({
       connectionString,
       max: 10,
-      idleTimeoutMillis: 10000, // release idle connections before server drops them (Render/cloud Postgres)
+      idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 5000,
     });
 
     pool.on('error', (err) => {
-      // Catch background socket drop errors from cloud PostgreSQL (Render/Supabase)
-      // pg.Pool automatically removes the dead client from the pool
-      Logger.warn(`Prisma pg pool idle connection closed by server: ${err.message}`, 'PrismaService');
+      Logger.warn(
+        `Prisma pg pool idle connection closed by server: ${err.message}`,
+        'PrismaService',
+      );
     });
 
     const adapter = new PrismaPg(pool);
@@ -40,4 +49,3 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.pool.end();
   }
 }
-

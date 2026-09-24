@@ -1,10 +1,12 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
   BadRequestException,
@@ -49,5 +51,35 @@ export class AdminController {
   @Roles('SUPER_ADMIN')
   async deleteUser(@Param('id') id: string, @Req() req: any) {
     return this.adminService.deleteUser(id, req.user.id);
+  }
+
+  // --- Distributed Render Cluster & Logs (Admin Only) ---
+
+  @Get('rendering/nodes')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getRenderingNodes() {
+    return this.adminService.getRenderingNodes();
+  }
+
+  @Get('rendering/logs')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getRenderingLogs(
+    @Query('eventType') eventType?: string,
+    @Query('level') level?: string,
+    @Query('workerId') workerId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.getRenderingLogs({
+      eventType,
+      level,
+      workerId,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
+
+  @Post('rendering/clear-logs')
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async clearRenderingLogs() {
+    return this.adminService.clearRenderingLogs();
   }
 }
