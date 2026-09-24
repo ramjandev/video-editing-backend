@@ -51,7 +51,7 @@ model Project {
   duration      Float            @default(30.0)
   thumbnail_url String?
   fps           Int              @default(30)
-  resolution    Json // Store resolution as Json { w: Int, h: Int }
+  resolution    Json
   versions      ProjectVersion[]
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
@@ -67,7 +67,7 @@ model ProjectVersion {
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId  String
   versionNum Int
-  sceneGraph Json // Store scene graph as Json
+  sceneGraph Json
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
