@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 import { WorkerRegistryService } from '../rendering/worker-registry.service';
+import { RenderingGateway } from '../rendering/rendering.gateway';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workerRegistry: WorkerRegistryService,
+    private readonly renderingGateway: RenderingGateway,
   ) {}
 
   async getStats() {
@@ -94,13 +96,18 @@ export class AdminService {
       },
     });
 
-    return {
+    const res = {
       message: `User ${updated.email} role updated to ${updated.role}`,
       user: {
         _id: updated.id,
         ...updated,
       },
     };
+
+    // Broadcast updated stats & users to connected admin sockets
+    this.broadcastUpdates();
+
+    return res;
   }
 
   async deleteUser(targetUserId: string, currentUserId: string) {
@@ -115,9 +122,25 @@ export class AdminService {
 
     await this.prisma.user.delete({ where: { id: targetUserId } });
 
+    // Broadcast updated stats & users to connected admin sockets
+    this.broadcastUpdates();
+
     return {
       message: `User ${user.email} and all associated data deleted successfully`,
     };
+  }
+
+  async broadcastUpdates() {
+    try {
+      const [stats, users] = await Promise.all([
+        this.getStats(),
+        this.getAllUsers(),
+      ]);
+      this.renderingGateway.broadcastPlatformStats(stats);
+      this.renderingGateway.broadcastUsersUpdate(users);
+    } catch (err) {
+      // Non-blocking background broadcast error catch
+    }
   }
 
   // --- Distributed Rendering Cluster & Logs (Admin Only) ---

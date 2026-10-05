@@ -163,4 +163,16 @@ export class RenderingGateway implements OnGatewayConnection, OnGatewayDisconnec
       this.server.to('admin:cluster').emit('admin:stats_update', stats);
     }
   }
+
+  broadcastPlatformStats(stats: any) {
+    if (this.server) {
+      this.server.to('admin:cluster').emit('admin:platform_stats', stats);
+    }
+  }
+
+  broadcastUsersUpdate(users: any) {
+    if (this.server) {
+      this.server.to('admin:cluster').emit('admin:users_update', users);
+    }
+  }
 }
